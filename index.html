@@ -1,0 +1,2063 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIPAS - SD NEGERI UMBUL KAPUK</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS for Native .xlsx Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        @media print {
+            body * { visibility: hidden !important; }
+            #print-area, #print-area * { visibility: visible !important; }
+            #print-area { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 15px !important; background: white !important; color: black !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="fixed inset-0 bg-indigo-950 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 space-y-6">
+            <div class="text-center space-y-2">
+                <div class="bg-indigo-50 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center border border-indigo-100">
+                    <i data-lucide="shield-check" class="w-8 h-8 text-indigo-600"></i>
+                </div>
+                <h1 class="text-xl font-bold text-slate-900">LOGIN SIPAS</h1>
+                <p class="text-xs text-slate-500">Sistem Informasi Pencatatan Aset Sekolah<br>SDN Umbul Kapuk</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Akun / Level Pengguna</label>
+                    <select id="loginRole" class="w-full px-3 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+                        <option value="admin">Administrator (Kepala Sekolah / Pengelola Utama)</option>
+                        <option value="pustakawan">Petugas Pustakawan / Pengelola Barang</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Kata Sandi (Password)</label>
+                    <input type="password" id="loginPassword" required placeholder="Masukkan kata sandi..." class="w-full px-3 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-md transition flex items-center justify-center space-x-2">
+                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                    <span>Masuk ke Aplikasi</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOP HEADER -->
+    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 sm:h-20">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-white/10 p-2 sm:p-2.5 rounded-xl border border-white/20">
+                        <i data-lucide="box" class="w-6 h-6 sm:w-8 sm:h-8 text-amber-400"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base sm:text-xl font-bold tracking-tight text-white leading-tight">SIPAS</h1>
+                        <p class="text-xs sm:text-sm text-indigo-200 font-medium hidden sm:block">Sistem Informasi Pencatatan Aset Sekolah - SDN Umbul Kapuk</p>
+                        <p id="userBadge" class="text-[10px] text-amber-300 font-semibold uppercase tracking-wider">Role: Admin</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button onclick="fetchDataFromCloud()" title="Tarik Data Terbaru dari Cloud" class="inline-flex items-center px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-semibold text-emerald-100 bg-emerald-700 hover:bg-emerald-600 rounded-lg border border-emerald-600 transition">
+                        <i data-lucide="cloud-download" class="w-4 h-4 mr-1"></i>
+                        <span class="hidden md:inline">Tarik Data</span>
+                    </button>
+                    <button id="btnSettings" onclick="openSettingsModal()" title="Pengaturan & Password" class="inline-flex items-center px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-semibold text-indigo-100 bg-indigo-800 hover:bg-indigo-700 rounded-lg border border-indigo-700 transition">
+                        <i data-lucide="settings" class="w-4 h-4 mr-1"></i>
+                        <span class="hidden md:inline">Pengaturan</span>
+                    </button>
+                    <button onclick="exportBackupJSON()" title="Export Backup JSON" class="inline-flex items-center px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-semibold text-indigo-100 bg-indigo-800 hover:bg-indigo-700 rounded-lg border border-indigo-700 transition">
+                        <i data-lucide="download" class="w-4 h-4 mr-1"></i>
+                        <span class="hidden md:inline">Backup</span>
+                    </button>
+                    <label class="cursor-pointer inline-flex items-center px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-semibold text-indigo-100 bg-indigo-800 hover:bg-indigo-700 rounded-lg border border-indigo-700 transition" title="Restore Data JSON">
+                        <i data-lucide="upload" class="w-4 h-4 mr-1"></i>
+                        <span class="hidden md:inline">Restore</span>
+                        <input type="file" id="restoreFile" accept=".json" onchange="importBackupJSON(event)" class="hidden">
+                    </label>
+                    <button onclick="handleLogout()" title="Keluar / Ganti Akun" class="inline-flex items-center px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-semibold text-rose-100 bg-rose-800 hover:bg-rose-700 rounded-lg border border-rose-700 transition">
+                        <i data-lucide="log-out" class="w-4 h-4 mr-1"></i>
+                        <span class="hidden md:inline">Keluar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6">
+
+        <!-- DASHBOARD STATS -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6">
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200/80 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Buku Pelajaran</p>
+                    <p id="stat-pelajaran-count" class="text-xl sm:text-2xl font-bold text-slate-800 mt-1">0</p>
+                    <p id="stat-pelajaran-item" class="text-[11px] text-indigo-600 mt-0.5">0 eksemplar</p>
+                </div>
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-xl"><i data-lucide="book" class="w-6 h-6"></i></div>
+            </div>
+
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200/80 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Buku Perpus</p>
+                    <p id="stat-perpus-count" class="text-xl sm:text-2xl font-bold text-slate-800 mt-1">0</p>
+                    <p id="stat-perpus-item" class="text-[11px] text-emerald-600 mt-0.5">0 eksemplar</p>
+                </div>
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><i data-lucide="library" class="w-6 h-6"></i></div>
+            </div>
+
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200/80 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Barang Modal</p>
+                    <p id="stat-barang-modal-count" class="text-xl sm:text-2xl font-bold text-slate-800 mt-1">0</p>
+                    <p id="stat-barang-modal-item" class="text-[11px] text-amber-600 mt-0.5">0 unit aset</p>
+                </div>
+                <div class="p-3 bg-amber-50 text-amber-600 rounded-xl"><i data-lucide="package" class="w-6 h-6"></i></div>
+            </div>
+
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200/80 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Pemeliharaan / Rusak</p>
+                    <p id="stat-pemeliharaan-count" class="text-xl sm:text-2xl font-bold text-rose-600 mt-1">0</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Catatan Perbaikan</p>
+                </div>
+                <div class="p-3 bg-rose-50 text-rose-600 rounded-xl"><i data-lucide="wrench" class="w-6 h-6"></i></div>
+            </div>
+        </div>
+
+        <!-- TABS & NAVBAR -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+            <div class="border-b border-slate-200 bg-slate-50/50 p-2 flex flex-wrap gap-2 justify-between items-center">
+                <nav class="flex flex-wrap space-x-1 sm:space-x-2 w-full sm:w-auto" aria-label="Tabs">
+                    <button onclick="switchTab('pelajaran')" id="tab-btn-pelajaran" class="tab-btn flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center space-x-1.5 bg-indigo-600 text-white shadow-sm">
+                        <i data-lucide="book" class="w-4 h-4"></i><span>Buku Pelajaran</span>
+                    </button>
+                    <button onclick="switchTab('perpus')" id="tab-btn-perpus" class="tab-btn flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center space-x-1.5 text-slate-600 hover:bg-slate-200/60">
+                        <i data-lucide="library" class="w-4 h-4"></i><span>Buku Perpus</span>
+                    </button>
+                    <button onclick="switchTab('pinjaman')" id="tab-btn-pinjaman" class="tab-btn flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center space-x-1.5 text-slate-600 hover:bg-slate-200/60">
+                        <i data-lucide="repeat" class="w-4 h-4"></i><span>Pinjaman Buku</span>
+                    </button>
+                    <button onclick="switchTab('bast')" id="tab-btn-bast" class="tab-btn flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center space-x-1.5 text-slate-600 hover:bg-slate-200/60">
+                        <i data-lucide="file-text" class="w-4 h-4"></i><span>BAST Serah Terima</span>
+                    </button>
+                    <button onclick="switchTab('barangModal')" id="tab-btn-barangModal" class="tab-btn flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center space-x-1.5 text-slate-600 hover:bg-slate-200/60">
+                        <i data-lucide="package" class="w-4 h-4"></i><span>Barang Modal</span>
+                    </button>
+                    <button onclick="switchTab('pemeliharaan')" id="tab-btn-pemeliharaan" class="tab-btn flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center space-x-1.5 text-slate-600 hover:bg-slate-200/60">
+                        <i data-lucide="wrench" class="w-4 h-4"></i><span>Pemeliharaan</span>
+                    </button>
+                </nav>
+
+                <div class="flex items-center space-x-2 w-full sm:w-auto mt-2 sm:mt-0">
+                    <div class="relative flex-grow sm:flex-grow-0">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                        <input type="text" id="searchInput" onkeyup="handleSearch()" placeholder="Cari data..." class="w-full sm:w-48 md:w-64 pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <button onclick="openAddModal()" class="px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm transition flex items-center space-x-1 whitespace-nowrap">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i><span>Tambah Data</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-4 sm:p-6">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div>
+                        <h2 id="current-tab-title" class="text-base sm:text-lg font-bold text-slate-800">Daftar Buku Pelajaran</h2>
+                        <p id="current-tab-desc" class="text-xs text-slate-500">Kelola daftar buku paket dan modul pelajaran sekolah.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="openPrintModal()" class="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-semibold rounded-lg transition flex items-center space-x-1">
+                            <i data-lucide="printer" class="w-3.5 h-3.5"></i><span>Cetak Laporan PDF</span>
+                        </button>
+                        <button onclick="exportCurrentExcel()" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-semibold rounded-lg transition flex items-center space-x-1">
+                            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i><span>Unduh Excel (.xlsx)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-lg border border-slate-200">
+                    <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead id="table-head" class="bg-slate-100 text-slate-700 font-semibold uppercase tracking-wider text-[11px]"></thead>
+                        <tbody id="table-body" class="divide-y divide-slate-200 bg-white"></tbody>
+                    </table>
+                </div>
+
+                <div id="empty-state" class="hidden py-12 text-center">
+                    <i data-lucide="inbox" class="w-12 h-12 text-slate-300 mx-auto mb-2"></i>
+                    <p class="text-sm font-semibold text-slate-600">Tidak ada data yang ditemukan</p>
+                    <p class="text-xs text-slate-400 mt-1">Silakan tambahkan data baru atau atur kata kunci pencarian Anda.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            <p>© 2026 SIPAS - SD NEGERI UMBUL KAPUK. Kec. Taktakan, Kota Serang - Banten.</p>
+        </div>
+    </footer>
+
+    <!-- MODAL PENGATURAN -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full flex flex-col overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-indigo-600"></i>
+                    <h3 class="font-bold text-slate-800 text-sm sm:text-base">Pengaturan & Keamanan Sistem</h3>
+                </div>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                <form id="settingsForm" onsubmit="saveSettings(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Kepala Sekolah</label>
+                        <input type="text" id="settingKepsekNama" required class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">NIP Kepala Sekolah</label>
+                        <input type="text" id="settingKepsekNip" required class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                    </div>
+                    <hr class="border-slate-200">
+                    <div>
+                        <label class="block text-xs font-semibold text-indigo-700 mb-1">Nama Pustakawan (Buku)</label>
+                        <input type="text" id="settingPustakawanNama" required class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-indigo-700 mb-1">NIP Pustakawan</label>
+                        <input type="text" id="settingPustakawanNip" required class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                    </div>
+                    <hr class="border-slate-200">
+                    <div>
+                        <label class="block text-xs font-semibold text-amber-700 mb-1">Nama Pengelola Barang Modal (Sarpras)</label>
+                        <input type="text" id="settingPengelolaBarangNama" required class="w-full px-3 py-2 text-xs sm:text-sm border border-amber-300 bg-amber-50/40 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-amber-700 mb-1">NIP Pengelola Barang Modal</label>
+                        <input type="text" id="settingPengelolaBarangNip" required class="w-full px-3 py-2 text-xs sm:text-sm border border-amber-300 bg-amber-50/40 rounded-lg">
+                    </div>
+                    <hr class="border-slate-200">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Upload Gambar Kop Surat (Opsional untuk PDF)</label>
+                        <input type="file" id="settingKopFile" accept="image/*" onchange="convertKopImage(this)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700">
+                        <input type="hidden" id="settingKopBase64">
+                        <div id="kopPreviewArea" class="mt-2 hidden">
+                            <img id="kopImgPreview" class="h-16 object-contain border border-slate-200 rounded p-1 bg-white">
+                        </div>
+                    </div>
+                    <hr class="border-slate-200">
+                    <div>
+                        <label class="block text-xs font-semibold text-purple-700 mb-1 flex items-center">
+                            <i data-lucide="cloud" class="w-4 h-4 mr-1"></i> Google Apps Script Web App URL
+                        </label>
+                        <input type="url" id="settingGasUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 text-xs sm:text-sm border border-purple-300 rounded-lg bg-purple-50/50">
+                    </div>
+                    <hr class="border-slate-200">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-800 mb-2 flex items-center"><i data-lucide="key-round" class="w-4 h-4 mr-1 text-indigo-600"></i> Kelola Password</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Password Admin</label>
+                                <input type="password" id="settingAdminPass" placeholder="Tetap jika kosong" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Password Petugas</label>
+                                <input type="password" id="settingPustakawanPass" placeholder="Tetap jika kosong" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="px-5 py-3 border-t border-slate-200 bg-slate-50 flex justify-end space-x-2">
+                <button onclick="closeSettingsModal()" class="px-4 py-2 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded-lg">Batal</button>
+                <button onclick="document.getElementById('settingsForm').requestSubmit()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CETAK LAPORAN PDF -->
+    <div id="printModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+                <h3 class="font-bold text-slate-800 text-base flex items-center"><i data-lucide="printer" class="w-5 h-5 text-indigo-600 mr-2"></i> Opsi Cetak Laporan PDF</h3>
+                <button onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="print-dynamic-options" class="space-y-3 text-xs sm:text-sm"></div>
+            <div class="pt-3 border-t border-slate-200 flex justify-end space-x-2">
+                <button onclick="closePrintModal()" class="px-4 py-2 bg-slate-100 text-slate-700 font-medium rounded-lg text-xs">Batal</button>
+                <button onclick="executePrintReport()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-xs flex items-center">
+                    <i data-lucide="printer" class="w-4 h-4 mr-1"></i> Cetak Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ADD / EDIT FORM -->
+    <div id="formModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="edit-3" class="w-5 h-5 text-indigo-600"></i>
+                    <h3 id="modalTitle" class="font-bold text-slate-800 text-sm sm:text-base">Tambah Data Baru</h3>
+                </div>
+                <button onclick="closeFormModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <div class="p-5 overflow-y-auto space-y-4 flex-grow">
+                <form id="dataForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                    <input type="hidden" id="editIndex" value="-1">
+                    <input type="hidden" id="formCategory" value="pelajaran">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Tanggal Pencatatan / Transaksi *</label>
+                            <input type="date" id="fieldTanggal" required onchange="onDateChangedForAutoNo(this.value)" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kode / No. Inventaris (Otomatis) *</label>
+                            <input type="text" id="fieldNo" readonly class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-100 border border-slate-300 rounded-lg font-mono font-medium text-slate-600">
+                        </div>
+                    </div>
+
+                    <div id="dynamic-fields-container" class="space-y-4"></div>
+                </form>
+            </div>
+
+            <div class="px-5 py-3 border-t border-slate-200 bg-slate-50 flex justify-end space-x-2">
+                <button onclick="closeFormModal()" class="px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg">Batal</button>
+                <button onclick="document.getElementById('dataForm').requestSubmit()" class="px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm">Simpan Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETAIL / FILE VIEW -->
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-5 overflow-hidden">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+                <h3 class="font-bold text-slate-800 text-base" id="detailModalTitle">Detail Dokumen</h3>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="detailModalContent" class="py-4 space-y-3 text-xs sm:text-sm text-slate-600"></div>
+            <div class="pt-3 border-t border-slate-200 flex justify-end">
+                <button onclick="closeDetailModal()" class="px-4 py-2 bg-slate-100 text-slate-700 font-medium rounded-lg text-xs">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transform translate-y-20 opacity-0 transition-all duration-300">
+        <i id="toastIcon" data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i>
+        <span id="toastMsg" class="text-xs sm:text-sm font-medium">Pesan notifikasi</span>
+    </div>
+
+    <div id="print-area" class="hidden"></div>
+
+    <script>
+        const defaultData = { pelajaran: [], perpus: [], pinjaman: [], bast: [], barangModal: [], pemeliharaan: [] };
+
+        const defaultSettings = {
+            kepsekNama: "Ati Rahmawati, S.Pd.",
+            kepsekNip: "19670930 200012 2 002",
+            pustakawanNama: "Ifan Fadilah, S.Pd.",
+            pustakawanNip: "20000229 202521 1 033",
+            pengelolaBarangNama: "Nina Sumartina, S.Pd.",
+            pengelolaBarangNip: "19840305 200902 2 008",
+            kopBase64: "",
+            gasUrl: "https://script.google.com/macros/s/AKfycbzpj3s3d7VogG7kvh7WGnEoWr7zndjg9CdAHWa5VJBZvxXNcCAoP6bHiZUnefpiIw7L/exec", // <-- Masukkan URL Web App Apps Script Anda di sini secara permanen
+            adminPassword: "admin123",
+            pustakawanPassword: "pustaka123"
+        };
+
+        let currentTab = 'pelajaran';
+        let appData = { pelajaran: [], perpus: [], pinjaman: [], bast: [], barangModal: [], pemeliharaan: [] };
+        let appSettings = { ...defaultSettings };
+        let currentUserRole = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLocalStorageSettings();
+            loadLocalStorageData();
+            checkExistingSession();
+            lucide.createIcons();
+        });
+
+        function checkExistingSession() {
+            const savedRole = sessionStorage.getItem('SIPAS_CURRENT_ROLE');
+            if (savedRole) {
+                currentUserRole = savedRole;
+                document.getElementById('loginScreen').classList.add('hidden');
+                applyRolePermissions();
+                fetchDataFromCloud(true).then(() => {
+                    renderApp();
+                });
+            } else {
+                document.getElementById('loginScreen').classList.remove('hidden');
+            }
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const role = document.getElementById('loginRole').value;
+            const pass = document.getElementById('loginPassword').value.trim();
+
+            const currentAdminPass = appSettings.adminPassword || 'admin123';
+            const currentPustakawanPass = appSettings.pustakawanPassword || 'pustaka123';
+
+            if ((role === 'admin' && pass === currentAdminPass) || (role === 'pustakawan' && pass === currentPustakawanPass)) {
+                currentUserRole = role;
+                sessionStorage.setItem('SIPAS_CURRENT_ROLE', role);
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('loginPassword').value = '';
+                applyRolePermissions();
+                showToast(`Berhasil masuk sebagai ${role.toUpperCase()}`, "success");
+
+                fetchDataFromCloud(true).then(() => {
+                    renderApp();
+                });
+            } else {
+                showToast("Kata sandi salah!", "error");
+            }
+        }
+
+        function handleLogout() {
+            sessionStorage.removeItem('SIPAS_CURRENT_ROLE');
+            currentUserRole = null;
+            document.getElementById('loginScreen').classList.remove('hidden');
+        }
+
+        function applyRolePermissions() {
+            const badge = document.getElementById('userBadge');
+            const btnSettings = document.getElementById('btnSettings');
+            if (currentUserRole === 'admin') {
+                badge.textContent = "Role: Administrator";
+                if (btnSettings) btnSettings.classList.remove('hidden');
+            } else {
+                badge.textContent = "Role: Petugas / Pengelola";
+                if (btnSettings) btnSettings.classList.add('hidden');
+            }
+        }
+
+        function loadLocalStorageData() {
+            try {
+                const stored = localStorage.getItem('SIPAS_UMBUL_KAPUK_DATA');
+                if (stored) appData = JSON.parse(stored);
+                if (!appData.pemeliharaan) appData.pemeliharaan = [];
+                if (!appData.barangModal) appData.barangModal = [];
+            } catch (err) { appData = JSON.parse(JSON.stringify(defaultData)); }
+        }
+
+        function loadLocalStorageSettings() {
+            try {
+                const stored = localStorage.getItem('SIPAS_UMBUL_KAPUK_SETTINGS');
+                if (stored) appSettings = JSON.parse(stored);
+            } catch (err) { appSettings = { ...defaultSettings }; }
+        }
+
+        function saveLocalStorageData() { localStorage.setItem('SIPAS_UMBUL_KAPUK_DATA', JSON.stringify(appData)); }
+        function saveLocalStorageSettings() { localStorage.setItem('SIPAS_UMBUL_KAPUK_SETTINGS', JSON.stringify(appSettings)); }
+
+        async function fetchDataFromCloud(silent = false) {
+            if (!appSettings.gasUrl) return;
+            if (!silent) showToast("Menarik data terbaru dari Cloud...", "info");
+            try {
+                const response = await fetch(appSettings.gasUrl);
+                const cloudData = await response.json();
+                if (cloudData) {
+                    appData = {
+                        pelajaran: cloudData.pelajaran || [],
+                        perpus: cloudData.perpus || [],
+                        pinjaman: cloudData.pinjaman || [],
+                        bast: cloudData.bast || [],
+                        barangModal: cloudData.barangModal || [],
+                        pemeliharaan: cloudData.pemeliharaan || []
+                    };
+
+                    if (cloudData.settings && cloudData.settings.length > 0) {
+                        appSettings = { ...defaultSettings, ...cloudData.settings[0] };
+                        saveLocalStorageSettings();
+                        applyRolePermissions();
+                    }
+
+                    saveLocalStorageData();
+                    renderApp();
+                    if (!silent) showToast("Data terupdate dari Cloud!", "success");
+                }
+            } catch (err) { if (!silent) showToast("Gagal menarik data cloud.", "error"); }
+        }
+
+        function openSettingsModal() {
+            if (currentUserRole !== 'admin') return;
+            document.getElementById('settingKepsekNama').value = appSettings.kepsekNama || '';
+            document.getElementById('settingKepsekNip').value = appSettings.kepsekNip || '';
+            document.getElementById('settingPustakawanNama').value = appSettings.pustakawanNama || '';
+            document.getElementById('settingPustakawanNip').value = appSettings.pustakawanNip || '';
+            document.getElementById('settingPengelolaBarangNama').value = appSettings.pengelolaBarangNama || '';
+            document.getElementById('settingPengelolaBarangNip').value = appSettings.pengelolaBarangNip || '';
+            document.getElementById('settingGasUrl').value = appSettings.gasUrl || '';
+            document.getElementById('settingKopBase64').value = appSettings.kopBase64 || '';
+            if (appSettings.kopBase64) {
+                document.getElementById('kopImgPreview').src = appSettings.kopBase64;
+                document.getElementById('kopPreviewArea').classList.remove('hidden');
+            } else {
+                document.getElementById('kopPreviewArea').classList.add('hidden');
+            }
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+        function closeSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
+
+        function convertKopImage(fileInput) {
+            const file = fileInput.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                document.getElementById('settingKopBase64').value = e.target.result;
+                document.getElementById('kopImgPreview').src = e.target.result;
+                document.getElementById('kopPreviewArea').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function saveSettings(e) {
+            e.preventDefault();
+            appSettings.kepsekNama = document.getElementById('settingKepsekNama').value.trim();
+            appSettings.kepsekNip = document.getElementById('settingKepsekNip').value.trim();
+            appSettings.pustakawanNama = document.getElementById('settingPustakawanNama').value.trim();
+            appSettings.pustakawanNip = document.getElementById('settingPustakawanNip').value.trim();
+            appSettings.pengelolaBarangNama = document.getElementById('settingPengelolaBarangNama').value.trim();
+            appSettings.pengelolaBarangNip = document.getElementById('settingPengelolaBarangNip').value.trim();
+            appSettings.gasUrl = document.getElementById('settingGasUrl').value.trim();
+            appSettings.kopBase64 = document.getElementById('settingKopBase64').value.trim();
+
+            const newAdminPass = document.getElementById('settingAdminPass').value.trim();
+            const newPustakawanPass = document.getElementById('settingPustakawanPass').value.trim();
+            if (newAdminPass) appSettings.adminPassword = newAdminPass;
+            if (newPustakawanPass) appSettings.pustakawanPassword = newPustakawanPass;
+
+            saveLocalStorageSettings();
+            closeSettingsModal();
+            showToast("Pengaturan disimpan!", "success");
+
+            await autoSyncToCloudBackground();
+            if (appSettings.gasUrl) await fetchDataFromCloud(true);
+        }
+
+        function renderApp() {
+            updateDashboardStats();
+            renderTableHeader();
+            renderTableBody();
+            lucide.createIcons();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center space-x-1.5 text-slate-600 hover:bg-slate-200/60";
+            });
+            document.getElementById(`tab-btn-${tab}`).className = "tab-btn flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center space-x-1.5 bg-indigo-600 text-white shadow-sm";
+
+            const titleEl = document.getElementById('current-tab-title');
+            const descEl = document.getElementById('current-tab-desc');
+
+            if (tab === 'pelajaran') { titleEl.textContent = 'Daftar Buku Pelajaran'; descEl.textContent = 'Kelola daftar buku paket dan modul pelajaran.'; }
+            else if (tab === 'perpus') { titleEl.textContent = 'Daftar Buku Perpustakaan'; descEl.textContent = 'Kelola koleksi buku bacaan & ensiklopedia.'; }
+            else if (tab === 'pinjaman') { titleEl.textContent = 'Data Peminjaman Buku'; descEl.textContent = 'Kelola sirkulasi peminjaman buku sekolah.'; }
+            else if (tab === 'bast') { titleEl.textContent = 'Dokumen BAST Serah Terima'; descEl.textContent = 'Arsip BAST pinjam/pakai buku & barang modal sekolah.'; }
+            else if (tab === 'barangModal') { titleEl.textContent = 'Daftar Aset Barang Modal'; descEl.textContent = 'Pendataan sarana & prasarana fisik sekolah.'; }
+            else if (tab === 'pemeliharaan') { titleEl.textContent = 'Pemeliharaan & Kerusakan'; descEl.textContent = 'Pencatatan kondisi fisik, pemeliharaan, dan kerusakan barang/buku.'; }
+
+            document.getElementById('searchInput').value = '';
+            renderApp();
+        }
+
+        function updateDashboardStats() {
+            const countPelajaran = appData.pelajaran.length;
+            const itemsPelajaran = appData.pelajaran.reduce((acc, curr) => acc + (parseInt(curr.jumlah) || 0), 0);
+
+            const countPerpus = appData.perpus.length;
+            const itemsPerpus = appData.perpus.reduce((acc, curr) => acc + (parseInt(curr.jumlah) || 0), 0);
+
+            const countBarangModal = appData.barangModal.length;
+            const itemsBarangModal = appData.barangModal.reduce((acc, curr) => acc + (parseInt(curr.jumlah) || 0), 0);
+
+            const countPemeliharaan = appData.pemeliharaan.length;
+
+            document.getElementById('stat-pelajaran-count').textContent = countPelajaran;
+            document.getElementById('stat-pelajaran-item').textContent = `${itemsPelajaran} eksemplar`;
+            document.getElementById('stat-perpus-count').textContent = countPerpus;
+            document.getElementById('stat-perpus-item').textContent = `${itemsPerpus} eksemplar`;
+            document.getElementById('stat-barang-modal-count').textContent = countBarangModal;
+            document.getElementById('stat-barang-modal-item').textContent = `${itemsBarangModal} unit barang`;
+            document.getElementById('stat-pemeliharaan-count').textContent = countPemeliharaan;
+        }
+
+        function renderTableHeader() {
+            const thead = document.getElementById('table-head');
+            if (currentTab === 'pelajaran') {
+                thead.innerHTML = `<tr>
+                    <th class="px-4 py-3">No. Inventaris</th>
+                    <th class="px-4 py-3">Judul & Jenis</th>
+                    <th class="px-4 py-3">Pengarang / Penerbit</th>
+                    <th class="px-4 py-3">Mapel & ISBN</th>
+                    <th class="px-4 py-3">Thn Beli & Sumber</th>
+                    <th class="px-4 py-3 text-center">Jumlah</th>
+                    <th class="px-4 py-3 text-center">SPJ</th>
+                    <th class="px-4 py-3 text-right">Aksi</th>
+                </tr>`;
+            } else if (currentTab === 'perpus') {
+                thead.innerHTML = `<tr>
+                    <th class="px-4 py-3">No. Inventaris</th>
+                    <th class="px-4 py-3">Judul & DDC</th>
+                    <th class="px-4 py-3">Pengarang / Penerbit</th>
+                    <th class="px-4 py-3">Thn Beli & Sumber</th>
+                    <th class="px-4 py-3 text-center">Jumlah</th>
+                    <th class="px-4 py-3 text-center">SPJ</th>
+                    <th class="px-4 py-3 text-right">Aksi</th>
+                </tr>`;
+            } else if (currentTab === 'barangModal') {
+                thead.innerHTML = `<tr>
+                    <th class="px-4 py-3">Kode Aset</th>
+                    <th class="px-4 py-3">Nama Barang & Spec</th>
+                    <th class="px-4 py-3">Kategori & Material</th>
+                    <th class="px-4 py-3">Thn Beli & Sumber</th>
+                    <th class="px-4 py-3">Lokasi & PIC</th>
+                    <th class="px-4 py-3 text-center">Kondisi</th>
+                    <th class="px-4 py-3 text-center">Jumlah</th>
+                    <th class="px-4 py-3 text-center">SPJ</th>
+                    <th class="px-4 py-3 text-right">Aksi</th>
+                </tr>`;
+            } else if (currentTab === 'pinjaman') {
+                thead.innerHTML = `<tr>
+                    <th class="px-4 py-3">No. Pinjam</th>
+                    <th class="px-4 py-3">Peminjam & Status</th>
+                    <th class="px-4 py-3">Buku Dipinjam</th>
+                    <th class="px-4 py-3">Tgl Pinjam & Tempo</th>
+                    <th class="px-4 py-3 text-center">Status</th>
+                    <th class="px-4 py-3 text-right">Aksi</th>
+                </tr>`;
+            } else if (currentTab === 'bast') {
+                thead.innerHTML = `<tr>
+                    <th class="px-4 py-3">No. BAST</th>
+                    <th class="px-4 py-3">Tanggal</th>
+                    <th class="px-4 py-3">Pengelola & Penerima</th>
+                    <th class="px-4 py-3">Rincian Barang/Buku</th>
+                    <th class="px-4 py-3 text-center">Total</th>
+                    <th class="px-4 py-3 text-center">Scan BAST</th>
+                    <th class="px-4 py-3 text-right">Aksi</th>
+                </tr>`;
+            } else if (currentTab === 'pemeliharaan') {
+                thead.innerHTML = `<tr>
+                    <th class="px-4 py-3">Kode</th>
+                    <th class="px-4 py-3">Tanggal</th>
+                    <th class="px-4 py-3">Nama Aset / Buku</th>
+                    <th class="px-4 py-3">No. Inventaris</th>
+                    <th class="px-4 py-3 text-center">Baik</th>
+                    <th class="px-4 py-3 text-center">Rusak Ringan</th>
+                    <th class="px-4 py-3 text-center">Rusak Berat</th>
+                    <th class="px-4 py-3 text-center">Dokumen</th>
+                    <th class="px-4 py-3 text-right">Aksi</th>
+                </tr>`;
+            }
+        }
+
+        function renderTableBody(searchQuery = '') {
+            const tbody = document.getElementById('table-body');
+            const emptyState = document.getElementById('empty-state');
+            tbody.innerHTML = '';
+
+            let dataList = [...(appData[currentTab] || [])];
+            dataList.sort((a, b) => (a.no || '').localeCompare(b.no || '', undefined, { numeric: true, sensitivity: 'base' }));
+
+            if (searchQuery.trim() !== '') {
+                const q = searchQuery.toLowerCase();
+                dataList = dataList.filter(item => Object.values(item).some(val => String(val).toLowerCase().includes(q)));
+            }
+
+            if (dataList.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            dataList.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition border-b border-slate-100";
+
+                if (currentTab === 'pelajaran') {
+                    const hasSpj = item.spjFile && item.spjFile.length > 5;
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 font-mono text-xs font-semibold text-indigo-600 whitespace-nowrap">${item.no}</td>
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-slate-800">${escapeHtml(item.judul)}</div>
+                            <span class="px-2 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-700 rounded">${escapeHtml(item.jenisBuku || 'Buku Siswa')}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="text-slate-700">${escapeHtml(item.pengarang || '-')}</div>
+                            <div class="text-[11px] text-slate-400">${escapeHtml(item.penerbit || '-')}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="text-xs text-slate-700">${escapeHtml(item.mapel || '-')}</div>
+                            <div class="text-[11px] text-slate-400">ISBN: ${escapeHtml(item.isbn || '-')}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700 rounded">${item.tahunBeli || '-'}</span>
+                            <div class="text-[11px] text-slate-500">${escapeHtml(item.sumber || '-')}</div>
+                        </td>
+                        <td class="px-4 py-3 text-center font-bold text-slate-800">${item.jumlah || 0}</td>
+                        <td class="px-4 py-3 text-center">
+                            ${hasSpj ? `<button onclick="viewFileModal('${item.spjFile}', 'SPJ_${item.no}')" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[11px] font-semibold">Ada (Lihat)</button>` : `<span class="text-[11px] text-slate-400 italic">Belum</span>`}
+                        </td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button onclick="openEditModal(${index})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg mr-1"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                            ${currentUserRole === 'admin' ? `<button onclick="deleteData(${index})" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                        </td>
+                    `;
+                } else if (currentTab === 'perpus') {
+                    const hasSpj = item.spjFile && item.spjFile.length > 5;
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 font-mono text-xs font-semibold text-indigo-600 whitespace-nowrap">${item.no}</td>
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-slate-800">${escapeHtml(item.judul)}</div>
+                            <span class="px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 rounded">DDC: ${escapeHtml(item.klasifikasi || '-')}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="text-slate-700">${escapeHtml(item.pengarang || '-')}</div>
+                            <div class="text-[11px] text-slate-400">${escapeHtml(item.penerbit || '-')}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700 rounded">${item.tahunBeli || '-'}</span>
+                            <div class="text-[11px] text-slate-500">${escapeHtml(item.sumber || '-')}</div>
+                        </td>
+                        <td class="px-4 py-3 text-center font-bold text-slate-800">${item.jumlah || 0}</td>
+                        <td class="px-4 py-3 text-center">
+                            ${hasSpj ? `<button onclick="viewFileModal('${item.spjFile}', 'SPJ_${item.no}')" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[11px] font-semibold">Ada (Lihat)</button>` : `<span class="text-[11px] text-slate-400 italic">Belum</span>`}
+                        </td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button onclick="openEditModal(${index})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg mr-1"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                            ${currentUserRole === 'admin' ? `<button onclick="deleteData(${index})" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                        </td>
+                    `;
+                } else if (currentTab === 'barangModal') {
+                    const hasSpj = item.spjFile && item.spjFile.length > 5;
+                    let kondisiBadge = 'bg-emerald-100 text-emerald-800';
+                    if (item.kondisi === 'Rusak Ringan') kondisiBadge = 'bg-amber-100 text-amber-800';
+                    if (item.kondisi === 'Rusak Berat') kondisiBadge = 'bg-rose-100 text-rose-800';
+
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 font-mono text-xs font-semibold text-amber-600 whitespace-nowrap">${item.no}</td>
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-slate-800">${escapeHtml(item.namaBarang)}</div>
+                            <div class="text-[11px] text-slate-500">Spec: ${escapeHtml(item.spesifikasi || '-')}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="text-slate-700 font-medium">${escapeHtml(item.kategori || '-')}</div>
+                            <div class="text-[11px] text-slate-400">Bahan: ${escapeHtml(item.bahan || '-')}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700 rounded">${item.tahunBeli || '-'}</span>
+                            <div class="text-[11px] text-slate-500">${escapeHtml(item.sumber || '-')}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="text-xs text-slate-700">${escapeHtml(item.lokasi || '-')}</div>
+                            <div class="text-[11px] text-indigo-600 font-medium">PIC: ${escapeHtml(item.pic || '-')}</div>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <span class="px-2 py-0.5 text-[10px] font-semibold rounded ${kondisiBadge}">${escapeHtml(item.kondisi || 'Baik')}</span>
+                        </td>
+                        <td class="px-4 py-3 text-center font-bold text-slate-800">${item.jumlah || 1}</td>
+                        <td class="px-4 py-3 text-center">
+                            ${hasSpj ? `<button onclick="viewFileModal('${item.spjFile}', 'SPJ_${item.no}')" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[11px] font-semibold">Ada (Lihat)</button>` : `<span class="text-[11px] text-slate-400 italic">Belum</span>`}
+                        </td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button onclick="openEditModal(${index})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg mr-1"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                            ${currentUserRole === 'admin' ? `<button onclick="deleteData(${index})" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                        </td>
+                    `;
+                } else if (currentTab === 'pinjaman') {
+                    const bukuListStr = Array.isArray(item.bukuDipinjam) ? item.bukuDipinjam.join(', ') : (item.bukuDipinjam || item.judulBuku || '-');
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 font-mono text-xs font-semibold text-purple-600 whitespace-nowrap">${item.no}</td>
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-slate-800">${escapeHtml(item.peminjam)}</div>
+                            <div class="text-[11px] text-slate-500">${escapeHtml(item.statusPeminjam || 'Siswa')} (${escapeHtml(item.kelas || '-')})</div>
+                        </td>
+                        <td class="px-4 py-3 text-xs text-slate-700 max-w-xs">${escapeHtml(bukuListStr)}</td>
+                        <td class="px-4 py-3 text-xs text-slate-600">${item.tanggal} s.d ${item.tglKembali}</td>
+                        <td class="px-4 py-3 text-center">
+                            <span class="px-2 py-1 text-[11px] font-semibold rounded ${item.status === 'dipinjam' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">${item.status || 'dipinjam'}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button onclick="printKartuPinjaman(${index})" title="Cetak Kartu Pinjaman" class="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg mr-1"><i data-lucide="printer" class="w-4 h-4"></i></button>
+                            <button onclick="openEditModal(${index})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg mr-1"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                            ${currentUserRole === 'admin' ? `<button onclick="deleteData(${index})" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                        </td>
+                    `;
+                } else if (currentTab === 'bast') {
+                    const hasFile = item.bastFile && item.bastFile.length > 5;
+                    const barangStr = Array.isArray(item.rincianBarang) ? item.rincianBarang.join(', ') : (item.rincianBarang || '-');
+                    const cleanTanggal = item.tanggal ? item.tanggal.split('T')[0] : '-';
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 font-mono text-xs font-semibold text-purple-600 whitespace-nowrap">${item.no}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">${cleanTanggal}</td>
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-slate-800">Penerima: ${escapeHtml(item.guru || '-')} (${escapeHtml(item.kelas || '-')})</div>
+                            <div class="text-[11px] text-slate-500">Pengelola: ${escapeHtml(item.pustakawan || '-')}</div>
+                        </td>
+                        <td class="px-4 py-3 text-xs text-slate-700 max-w-xs">${escapeHtml(barangStr)}</td>
+                        <td class="px-4 py-3 text-center font-bold text-slate-800">${item.jumlahTotal || 0}</td>
+                        <td class="px-4 py-3 text-center">
+                            ${hasFile ? `<button onclick="viewFileModal('${item.bastFile}', 'BAST_${item.no}')" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[11px] font-semibold">Ada (Lihat)</button>` : `<span class="text-[11px] text-slate-400 italic">Belum</span>`}
+                        </td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button onclick="printDokumenBAST(${index})" title="Cetak Dokumen BAST" class="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg mr-1"><i data-lucide="printer" class="w-4 h-4"></i></button>
+                            <button onclick="openEditModal(${index})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg mr-1"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                            ${currentUserRole === 'admin' ? `<button onclick="deleteData(${index})" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                        </td>
+                    `;
+                } else if (currentTab === 'pemeliharaan') {
+                    const hasBukti = item.buktiFile && item.buktiFile.length > 5;
+                    const cleanTanggal = item.tanggal ? item.tanggal.split('T')[0] : '-';
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 font-mono text-xs font-semibold text-rose-600 whitespace-nowrap">${item.no}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">${cleanTanggal}</td>
+                        <td class="px-4 py-3 font-bold text-slate-800">${escapeHtml(item.namaAset)}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-slate-600">${escapeHtml(item.noInventaris || '-')}</td>
+                        <td class="px-4 py-3 text-center font-semibold text-emerald-600">${item.jumlahBaik || 0}</td>
+                        <td class="px-4 py-3 text-center font-semibold text-amber-600">${item.jumlahRusakRingan || 0}</td>
+                        <td class="px-4 py-3 text-center font-semibold text-rose-600">${item.jumlahRusakBerat || 0}</td>
+                        <td class="px-4 py-3 text-center">
+                            ${hasBukti ? `<button onclick="viewFileModal('${item.buktiFile}', 'Pemeliharaan_${item.no}')" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[11px] font-semibold">Ada (Lihat)</button>` : `<span class="text-[11px] text-slate-400 italic">Belum</span>`}
+                        </td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button onclick="openEditModal(${index})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg mr-1"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                            ${currentUserRole === 'admin' ? `<button onclick="deleteData(${index})" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                        </td>
+                    `;
+                }
+                tbody.appendChild(tr);
+            });
+        }
+
+        function handleSearch() { renderTableBody(document.getElementById('searchInput').value); lucide.createIcons(); }
+
+        function generateAutoNoByDate(tab, dateString) {
+            const dateObj = dateString ? new Date(dateString) : new Date();
+            const year = !isNaN(dateObj.getFullYear()) ? dateObj.getFullYear() : new Date().getFullYear();
+            const list = appData[tab] || [];
+            let maxSeq = 0;
+            list.forEach(item => {
+                if (item.no) {
+                    const parts = item.no.split('-');
+                    if (parts.length >= 3 && parts[1] === String(year)) {
+                        const seq = parseInt(parts[2]) || 0;
+                        if (seq > maxSeq) maxSeq = seq;
+                    }
+                }
+            });
+            const pad = String(maxSeq + 1).padStart(3, '0');
+            if (tab === 'pelajaran') return `BP-${year}-${pad}`;
+            if (tab === 'perpus') return `BPT-${year}-${pad}`;
+            if (tab === 'barangModal') return `BM-${year}-${pad}`;
+            if (tab === 'pinjaman') return `PINJ-${year}-${pad}`;
+            if (tab === 'bast') return `BAST-${year}-${pad}`;
+            if (tab === 'pemeliharaan') return `MNT-${year}-${pad}`;
+            return `INV-${year}-${pad}`;
+        }
+
+        function onDateChangedForAutoNo(dateVal) {
+            if (parseInt(document.getElementById('editIndex').value) < 0) {
+                document.getElementById('fieldNo').value = generateAutoNoByDate(currentTab, dateVal);
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('editIndex').value = "-1";
+            document.getElementById('formCategory').value = currentTab;
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('fieldTanggal').value = todayStr;
+            document.getElementById('fieldNo').value = generateAutoNoByDate(currentTab, todayStr);
+            renderDynamicFormFields();
+            document.getElementById('formModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function openEditModal(index) {
+            const item = appData[currentTab][index];
+            if (!item) return;
+            document.getElementById('editIndex').value = index;
+            document.getElementById('formCategory').value = currentTab;
+            document.getElementById('fieldNo').value = item.no || '';
+            document.getElementById('fieldTanggal').value = item.tanggal || new Date().toISOString().split('T')[0];
+            renderDynamicFormFields(item);
+            document.getElementById('formModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeFormModal() { document.getElementById('formModal').classList.add('hidden'); }
+
+        function renderDynamicFormFields(data = {}) {
+            const container = document.getElementById('dynamic-fields-container');
+            container.innerHTML = '';
+            const currentYear = new Date().getFullYear();
+
+            if (currentTab === 'pelajaran') {
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Judul Buku Pelajaran *</label>
+                            <input type="text" id="fieldJudul" required value="${escapeHtml(data.judul || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Jenis Buku Pelajaran *</label>
+                            <select id="fieldJenisBuku" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                                <option value="Buku Siswa" ${data.jenisBuku === 'Buku Siswa' ? 'selected' : ''}>Buku Siswa</option>
+                                <option value="Buku Guru" ${data.jenisBuku === 'Buku Guru' ? 'selected' : ''}>Buku Guru</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Mata Pelajaran *</label>
+                            <input type="text" id="fieldMapel" required value="${escapeHtml(data.mapel || '')}" placeholder="Matematika / IPAS" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kelas (Peruntukan) *</label>
+                            <input type="text" id="fieldKelas" required value="${escapeHtml(data.kelas || '')}" placeholder="Kelas 1 / Kelas 4" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Pengarang</label>
+                            <input type="text" id="fieldPengarang" value="${escapeHtml(data.pengarang || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Penerbit</label>
+                            <input type="text" id="fieldPenerbit" value="${escapeHtml(data.penerbit || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Tahun Terbit / Tahun Beli *</label>
+                            <input type="text" id="fieldTahunBeli" value="${escapeHtml(data.tahunBeli || currentYear)}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Nomor ISBN</label>
+                            <input type="text" id="fieldIsbn" value="${escapeHtml(data.isbn || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Sumber Dana *</label>
+                            <select id="fieldSumber" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                                <option value="Bos Reguler" ${data.sumber === 'Bos Reguler' ? 'selected' : ''}>Bos Reguler</option>
+                                <option value="Bos Kinerja" ${data.sumber === 'Bos Kinerja' ? 'selected' : ''}>Bos Kinerja</option>
+                                <option value="Hibah" ${data.sumber === 'Hibah' ? 'selected' : ''}>Hibah</option>
+                                <option value="Lainnya" ${data.sumber === 'Lainnya' ? 'selected' : ''}>Lainnya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Harga Satuan (Rp)</label>
+                            <input type="number" id="fieldHarga" value="${data.harga || 0}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Jumlah Eksemplar *</label>
+                            <input type="number" id="fieldJumlah" required min="1" value="${data.jumlah || 1}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Lokasi Rak</label>
+                            <input type="text" id="fieldRak" value="${escapeHtml(data.rak || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div class="sm:col-span-2 border-t border-slate-200 pt-3">
+                            <label class="block text-xs font-semibold text-indigo-700 mb-1">Upload SPJ / Faktur Pembelian (PDF/Gambar)</label>
+                            <input type="file" id="fieldSpjFile" accept="image/*,.pdf" onchange="convertFileToBase64(this, 'fieldSpjBase64')" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700">
+                            <input type="hidden" id="fieldSpjBase64" value="${data.spjFile || ''}">
+                        </div>
+                    </div>
+                `;
+            } else if (currentTab === 'perpus') {
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Judul Buku Perpustakaan *</label>
+                            <input type="text" id="fieldJudul" required value="${escapeHtml(data.judul || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kode Klasifikasi (DDC) *</label>
+                            <input type="text" id="fieldKlasifikasi" required value="${escapeHtml(data.klasifikasi || '')}" placeholder="000 / 500 / 800" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kelas (Peruntukan) *</label>
+                            <input type="text" id="fieldKelas" required value="${escapeHtml(data.kelas || '')}" placeholder="Umum / Kelas 5" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Pengarang</label>
+                            <input type="text" id="fieldPengarang" value="${escapeHtml(data.pengarang || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Penerbit</label>
+                            <input type="text" id="fieldPenerbit" value="${escapeHtml(data.penerbit || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Tahun Terbit / Tahun Beli *</label>
+                            <input type="text" id="fieldTahunBeli" value="${escapeHtml(data.tahunBeli || currentYear)}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Sumber Dana *</label>
+                            <select id="fieldSumber" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                                <option value="Bos Reguler" ${data.sumber === 'Bos Reguler' ? 'selected' : ''}>Bos Reguler</option>
+                                <option value="Bos Kinerja" ${data.sumber === 'Bos Kinerja' ? 'selected' : ''}>Bos Kinerja</option>
+                                <option value="Hibah" ${data.sumber === 'Hibah' ? 'selected' : ''}>Hibah</option>
+                                <option value="Lainnya" ${data.sumber === 'Lainnya' ? 'selected' : ''}>Lainnya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Harga Satuan (Rp)</label>
+                            <input type="number" id="fieldHarga" value="${data.harga || 0}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Jumlah Eksemplar *</label>
+                            <input type="number" id="fieldJumlah" required min="1" value="${data.jumlah || 1}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Lokasi Rak</label>
+                            <input type="text" id="fieldRak" value="${escapeHtml(data.rak || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div class="sm:col-span-2 border-t border-slate-200 pt-3">
+                            <label class="block text-xs font-semibold text-indigo-700 mb-1">Upload SPJ / Faktur Pembelian (PDF/Gambar)</label>
+                            <input type="file" id="fieldSpjFile" accept="image/*,.pdf" onchange="convertFileToBase64(this, 'fieldSpjBase64')" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700">
+                            <input type="hidden" id="fieldSpjBase64" value="${data.spjFile || ''}">
+                        </div>
+                    </div>
+                `;
+            } else if (currentTab === 'barangModal') {
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Barang Modal *</label>
+                            <input type="text" id="fieldNamaBarang" required value="${escapeHtml(data.namaBarang || '')}" placeholder="Contoh: Laptop Asus / Meja Siswa" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kategori / Jenis Aset *</label>
+                            <select id="fieldKategori" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                                <option value="Peralatan" ${data.kategori === 'Peralatan' ? 'selected' : ''}>Peralatan</option>
+                                <option value="Mesin & Elektronik" ${data.kategori === 'Mesin & Elektronik' ? 'selected' : ''}>Mesin & Elektronik</option>
+                                <option value="Gedung & Bangunan" ${data.kategori === 'Gedung & Bangunan' ? 'selected' : ''}>Gedung & Bangunan</option>
+                                <option value="Mebel / Meubelair" ${data.kategori === 'Mebel / Meubelair' ? 'selected' : ''}>Mebel / Meubelair</option>
+                                <option value="Kendaraan" ${data.kategori === 'Kendaraan' ? 'selected' : ''}>Kendaraan</option>
+                                <option value="Lainnya" ${data.kategori === 'Lainnya' ? 'selected' : ''}>Lainnya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kelas / Ruangan *</label>
+                            <input type="text" id="fieldKelas" required value="${escapeHtml(data.kelas || '')}" placeholder="Ruang Guru / Kelas 3" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Bahan / Material</label>
+                            <input type="text" id="fieldBahan" value="${escapeHtml(data.bahan || '')}" placeholder="Kayu Jati / Besi / Plastik" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Spesifikasi Barang</label>
+                            <input type="text" id="fieldSpesifikasi" value="${escapeHtml(data.spesifikasi || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Sumber Dana *</label>
+                            <select id="fieldSumber" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                                <option value="Bos Reguler" ${data.sumber === 'Bos Reguler' ? 'selected' : ''}>Bos Reguler</option>
+                                <option value="Bos Kinerja" ${data.sumber === 'Bos Kinerja' ? 'selected' : ''}>Bos Kinerja</option>
+                                <option value="APBD" ${data.sumber === 'APBD' ? 'selected' : ''}>APBD</option>
+                                <option value="Hibah" ${data.sumber === 'Hibah' ? 'selected' : ''}>Hibah</option>
+                                <option value="Pinjam" ${data.sumber === 'Pinjam' ? 'selected' : ''}>Pinjam</option>
+                                <option value="Lainnya" ${data.sumber === 'Lainnya' ? 'selected' : ''}>Lainnya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Tahun Beli / Perolehan</label>
+                            <input type="text" id="fieldTahunBeli" value="${escapeHtml(data.tahunBeli || currentYear)}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">No. Dokumen / Bukti Transaksi</label>
+                            <input type="text" id="fieldNoDokumen" value="${escapeHtml(data.noDokumen || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Harga Satuan (Rp)</label>
+                            <input type="number" id="fieldHarga" value="${data.harga || 0}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Lokasi Penempatan *</label>
+                            <input type="text" id="fieldLokasi" required value="${escapeHtml(data.lokasi || '')}" placeholder="Ruang Guru / Lab Komputer" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Penanggung Jawab (PIC) *</label>
+                            <input type="text" id="fieldPic" required value="${escapeHtml(data.pic || '')}" placeholder="Nama Guru / Pengelola" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kondisi Fisik *</label>
+                            <select id="fieldKondisi" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                                <option value="Baik" ${data.kondisi === 'Baik' ? 'selected' : ''}>Baik</option>
+                                <option value="Rusak Ringan" ${data.kondisi === 'Rusak Ringan' ? 'selected' : ''}>Rusak Ringan</option>
+                                <option value="Rusak Berat" ${data.kondisi === 'Rusak Berat' ? 'selected' : ''}>Rusak Berat</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kuantitas / Jumlah *</label>
+                            <input type="number" id="fieldJumlah" required min="1" value="${data.jumlah || 1}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Keterangan Tambahan</label>
+                            <input type="text" id="fieldKeterangan" value="${escapeHtml(data.keterangan || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div class="sm:col-span-2 border-t border-slate-200 pt-3">
+                            <label class="block text-xs font-semibold text-indigo-700 mb-1">Upload Dokumen SPJ / Faktur Pembelian (PDF/Gambar)</label>
+                            <input type="file" id="fieldSpjFile" accept="image/*,.pdf" onchange="convertFileToBase64(this, 'fieldSpjBase64')" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700">
+                            <input type="hidden" id="fieldSpjBase64" value="${data.spjFile || ''}">
+                        </div>
+                    </div>
+                `;
+            } else if (currentTab === 'pinjaman') {
+                const listBuku = [...(appData.pelajaran || []), ...(appData.perpus || [])];
+                const selectedBukuMap = data.bukuDipinjamMap || {};
+                if (Array.isArray(data.bukuDipinjam) && Object.keys(selectedBukuMap).length === 0) {
+                    data.bukuDipinjam.forEach(b => selectedBukuMap[b] = 1);
+                }
+
+                const bookCheckboxes = listBuku.map(b => {
+                    const isChecked = selectedBukuMap[b.judul] !== undefined ? 'checked' : '';
+                    const qtyVal = selectedBukuMap[b.judul] || 1;
+                    return `
+                        <div class="flex items-center justify-between space-x-2 text-xs p-1.5 border border-slate-200 rounded hover:bg-slate-50">
+                            <label class="flex items-center space-x-2 truncate cursor-pointer flex-grow">
+                                <input type="checkbox" name="bukuDipinjamCheck" value="${escapeHtml(b.judul)}" ${isChecked} onchange="recalcPinjamanTotal()" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                <span class="truncate">${escapeHtml(b.judul)} (${b.no})</span>
+                            </label>
+                            <input type="number" min="1" value="${qtyVal}" name="bukuQty_${escapeHtml(b.judul)}" oninput="recalcPinjamanTotal()" class="w-16 px-1.5 py-0.5 border border-slate-300 rounded text-center text-xs" title="Jumlah eksemplar buku ini">
+                        </div>`;
+                }).join('');
+
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Peminjam *</label>
+                            <input type="text" id="fieldPeminjam" required value="${escapeHtml(data.peminjam || '')}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Status Peminjam *</label>
+                            <select id="fieldStatusPeminjam" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                                <option value="Siswa" ${data.statusPeminjam === 'Siswa' ? 'selected' : ''}>Siswa</option>
+                                <option value="Guru" ${data.statusPeminjam === 'Guru' ? 'selected' : ''}>Guru</option>
+                                <option value="Lainnya" ${data.statusPeminjam === 'Lainnya' ? 'selected' : ''}>Lainnya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kelas / Jabatan *</label>
+                            <input type="text" id="fieldKelas" required value="${escapeHtml(data.kelas || '')}" placeholder="Kelas 5A / Guru Mapel" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Tanggal Rencana Kembali *</label>
+                            <input type="date" id="fieldTglKembali" required value="${data.tglKembali || ''}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Status Pinjaman *</label>
+                            <select id="fieldStatus" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                                <option value="dipinjam" ${data.status === 'dipinjam' ? 'selected' : ''}>Dipinjam</option>
+                                <option value="dikembalikan" ${data.status === 'dikembalikan' ? 'selected' : ''}>Dikembalikan</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Jumlah Total Eksemplar (Otomatis Akumulasi)</label>
+                            <input type="number" id="fieldJumlah" readonly value="${data.jumlah || 1}" class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-100 border border-slate-300 rounded-lg font-bold text-indigo-700">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Buku Dipinjam & Atur Jumlahnya per Buku *</label>
+                            <div class="max-h-48 overflow-y-auto grid grid-cols-1 gap-2 border border-slate-300 p-2 rounded-lg bg-slate-50">
+                                ${bookCheckboxes || '<p class="text-xs text-slate-400">Belum ada data buku.</p>'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (currentTab === 'bast') {
+                const listAllBarang = [
+                    ...(appData.pelajaran || []).map(b => ({ type: 'Buku', nama: b.judul, no: b.no })),
+                    ...(appData.perpus || []).map(b => ({ type: 'Buku', nama: b.judul, no: b.no })),
+                    ...(appData.barangModal || []).map(b => ({ type: 'Barang', nama: b.namaBarang, no: b.no }))
+                ];
+
+                const existingRincianMap = data.rincianBarangMap || {};
+                if (Array.isArray(data.rincianBarang) && Object.keys(existingRincianMap).length === 0) {
+                    data.rincianBarang.forEach(r => existingRincianMap[r] = 1);
+                }
+
+                const itemCheckboxes = listAllBarang.map(item => {
+                    const labelStr = `[${item.type}] ${item.nama} (${item.no})`;
+                    const isChecked = existingRincianMap[labelStr] !== undefined ? 'checked' : '';
+                    const qtyVal = existingRincianMap[labelStr] || 1;
+                    return `
+                        <div class="flex items-center justify-between space-x-2 text-xs p-1.5 border border-slate-200 rounded hover:bg-slate-50">
+                            <label class="flex items-center space-x-2 truncate cursor-pointer flex-grow">
+                                <input type="checkbox" name="bastBarangCheck" value="${escapeHtml(labelStr)}" ${isChecked} onchange="recalcBastTotal()" class="rounded text-purple-600 focus:ring-purple-500">
+                                <span class="truncate">${escapeHtml(labelStr)}</span>
+                            </label>
+                            <input type="number" min="1" value="${qtyVal}" name="bastQty_${escapeHtml(labelStr)}" oninput="recalcBastTotal()" class="w-16 px-1.5 py-0.5 border border-slate-300 rounded text-center text-xs" title="Jumlah item ini">
+                        </div>`;
+                }).join('');
+
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Pengelola / Petugas *</label>
+                            <select id="fieldPengelolaTipe" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg" onchange="updateBastPengelolaName(this.value)">
+                                <option value="pustakawan" ${data.pengelolaTipe !== 'pengelolaBarang' ? 'selected' : ''}>Pustakawan</option>
+                                <option value="pengelolaBarang" ${data.pengelolaTipe === 'pengelolaBarang' ? 'selected' : ''}>Pengelola Barang Modal</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Pengelola *</label>
+                            <input type="text" id="fieldPustakawan" required value="${escapeHtml(data.pustakawan || appSettings.pustakawanNama)}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Penerima *</label>
+                            <input type="text" id="fieldGuru" required value="${escapeHtml(data.guru || '')}" placeholder="Nama Guru / Staf" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kelas / Jabatan *</label>
+                            <input type="text" id="fieldKelas" required value="${escapeHtml(data.kelas || '')}" placeholder="Wali Kelas 4B / Guru PJOK" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Buku / Barang Serah Terima & Atur Jumlahnya *</label>
+                            <div class="max-h-48 overflow-y-auto grid grid-cols-1 gap-2 border border-slate-300 p-2 rounded-lg bg-slate-50">
+                                ${itemCheckboxes || '<p class="text-xs text-slate-400">Belum ada data barang/buku.</p>'}
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Jumlah Total Items (Otomatis Akumulasi)</label>
+                            <input type="number" id="fieldJumlahTotal" readonly value="${data.jumlahTotal || 1}" class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-100 border border-slate-300 rounded-lg font-bold text-purple-700">
+                        </div>
+                        <div class="sm:col-span-2 border-t border-slate-200 pt-3">
+                            <label class="block text-xs font-semibold text-purple-700 mb-1">Upload Berkas Scan BAST Asli (Setelah TTD)</label>
+                            <input type="file" id="fieldBastFile" accept="image/*,.pdf" onchange="convertFileToBase64(this, 'fieldBastBase64')" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700">
+                            <input type="hidden" id="fieldBastBase64" value="${data.bastFile || ''}">
+                        </div>
+                    </div>
+                `;
+            } else if (currentTab === 'pemeliharaan') {
+                const listAllAset = [
+                    ...(appData.pelajaran || []).map(b => ({ nama: b.judul, no: b.no, thn: b.tahunBeli })),
+                    ...(appData.perpus || []).map(b => ({ nama: b.judul, no: b.no, thn: b.tahunBeli })),
+                    ...(appData.barangModal || []).map(b => ({ nama: b.namaBarang, no: b.no, thn: b.tahunBeli }))
+                ];
+
+                const asetOptions = listAllAset.map(item => `<option value="${escapeHtml(item.nama)}" data-no="${escapeHtml(item.no)}" data-thn="${escapeHtml(item.thn || '')}" ${data.namaAset === item.nama ? 'selected' : ''}>${escapeHtml(item.nama)} (${item.no})</option>`).join('');
+
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Barang / Buku *</label>
+                            <select id="fieldNamaAset" required onchange="autoFillAsetDetails(this)" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                                <option value="">-- Pilih Barang / Buku --</option>
+                                ${asetOptions}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">No. Inventaris (Otomatis)</label>
+                            <input type="text" id="fieldNoInventaris" readonly value="${escapeHtml(data.noInventaris || '')}" class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-100 border border-slate-300 rounded-lg font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Tahun Pembelian (Otomatis)</label>
+                            <input type="text" id="fieldTahunBeliAset" readonly value="${escapeHtml(data.tahunBeli || '')}" class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-100 border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Jumlah Kondisi Baik *</label>
+                            <input type="number" id="fieldJumlahBaik" min="0" value="${data.jumlahBaik || 0}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Jumlah Rusak Ringan *</label>
+                            <input type="number" id="fieldJumlahRusakRingan" min="0" value="${data.jumlahRusakRingan || 0}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Jumlah Rusak Berat *</label>
+                            <input type="number" id="fieldJumlahRusakBerat" min="0" value="${data.jumlahRusakBerat || 0}" class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Keterangan Pemeliharaan / Kerusakan</label>
+                            <input type="text" id="fieldKeteranganMnt" value="${escapeHtml(data.keterangan || '')}" placeholder="Tindakan perbaikan atau catatan kerusakan..." class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-lg">
+                        </div>
+                        <div class="sm:col-span-2 border-t border-slate-200 pt-3">
+                            <label class="block text-xs font-semibold text-rose-700 mb-1">Upload Dokumen Barang Rusak / Sedang (PDF/Gambar)</label>
+                            <input type="file" id="fieldBuktiFile" accept="image/*,.pdf" onchange="convertFileToBase64(this, 'fieldBuktiBase64')" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700">
+                            <input type="hidden" id="fieldBuktiBase64" value="${data.buktiFile || ''}">
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function recalcPinjamanTotal() {
+            let total = 0;
+            document.querySelectorAll('input[name="bukuDipinjamCheck"]:checked').forEach(cb => {
+                const qtyInput = document.querySelector(`input[name="bukuQty_${CSS.escape(cb.value)}"]`);
+                const q = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+                total += q;
+            });
+            const fieldJml = document.getElementById('fieldJumlah');
+            if (fieldJml) fieldJml.value = total > 0 ? total : 1;
+        }
+
+        function recalcBastTotal() {
+            let total = 0;
+            document.querySelectorAll('input[name="bastBarangCheck"]:checked').forEach(cb => {
+                const qtyInput = document.querySelector(`input[name="bastQty_${CSS.escape(cb.value)}"]`);
+                const q = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+                total += q;
+            });
+            const fieldJml = document.getElementById('fieldJumlahTotal');
+            if (fieldJml) fieldJml.value = total > 0 ? total : 1;
+        }
+
+        function updateBastPengelolaName(tipe) {
+            const inputEl = document.getElementById('fieldPustakawan');
+            if (!inputEl) return;
+            if (tipe === 'pengelolaBarang') inputEl.value = appSettings.pengelolaBarangNama || '';
+            else inputEl.value = appSettings.pustakawanNama || '';
+        }
+
+        function autoFillAsetDetails(selectEl) {
+            const selectedOpt = selectEl.options[selectEl.selectedIndex];
+            if (selectedOpt && selectedOpt.value) {
+                document.getElementById('fieldNoInventaris').value = selectedOpt.getAttribute('data-no') || '';
+                document.getElementById('fieldTahunBeliAset').value = selectedOpt.getAttribute('data-thn') || '';
+            } else {
+                document.getElementById('fieldNoInventaris').value = '';
+                document.getElementById('fieldTahunBeliAset').value = '';
+            }
+        }
+
+        function convertFileToBase64(fileInput, hiddenFieldId) {
+            const file = fileInput.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => { document.getElementById(hiddenFieldId).value = e.target.result; };
+            reader.readAsDataURL(file);
+        }
+
+        function viewFileModal(fileUrl, titlePrefix) {
+            if (!fileUrl) return;
+            document.getElementById('detailModalTitle').textContent = `Dokumen - ${titlePrefix}`;
+            document.getElementById('detailModalContent').innerHTML = `
+                <div class="text-center space-y-3 py-4">
+                    <p class="text-xs text-slate-600">Berkas dokumen telah tersimpan di Google Drive.</p>
+                    <a href="${fileUrl}" target="_blank" download="${titlePrefix}.pdf" class="inline-block px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm">
+                        Unduh / Buka Dokumen
+                    </a>
+                </div>`;
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const editIndex = parseInt(document.getElementById('editIndex').value);
+            const category = document.getElementById('formCategory').value;
+            const no = document.getElementById('fieldNo').value;
+            const tanggal = document.getElementById('fieldTanggal').value;
+
+            let newItem = { no, tanggal };
+
+            if (category === 'pelajaran') {
+                newItem.judul = document.getElementById('fieldJudul').value.trim();
+                newItem.jenisBuku = document.getElementById('fieldJenisBuku').value;
+                newItem.mapel = document.getElementById('fieldMapel').value.trim();
+                newItem.kelas = document.getElementById('fieldKelas').value.trim();
+                newItem.pengarang = document.getElementById('fieldPengarang').value.trim();
+                newItem.penerbit = document.getElementById('fieldPenerbit').value.trim();
+                newItem.tahunBeli = document.getElementById('fieldTahunBeli').value.trim();
+                newItem.isbn = document.getElementById('fieldIsbn').value.trim();
+                newItem.sumber = document.getElementById('fieldSumber').value;
+                newItem.harga = parseFloat(document.getElementById('fieldHarga').value) || 0;
+                newItem.jumlah = parseInt(document.getElementById('fieldJumlah').value) || 1;
+                newItem.rak = document.getElementById('fieldRak').value.trim();
+                newItem.spjFile = document.getElementById('fieldSpjBase64').value;
+            } else if (category === 'perpus') {
+                newItem.judul = document.getElementById('fieldJudul').value.trim();
+                newItem.klasifikasi = document.getElementById('fieldKlasifikasi').value.trim();
+                newItem.kelas = document.getElementById('fieldKelas').value.trim();
+                newItem.pengarang = document.getElementById('fieldPengarang').value.trim();
+                newItem.penerbit = document.getElementById('fieldPenerbit').value.trim();
+                newItem.tahunBeli = document.getElementById('fieldTahunBeli').value.trim();
+                newItem.sumber = document.getElementById('fieldSumber').value;
+                newItem.harga = parseFloat(document.getElementById('fieldHarga').value) || 0;
+                newItem.jumlah = parseInt(document.getElementById('fieldJumlah').value) || 1;
+                newItem.rak = document.getElementById('fieldRak').value.trim();
+                newItem.spjFile = document.getElementById('fieldSpjBase64').value;
+            } else if (category === 'barangModal') {
+                newItem.namaBarang = document.getElementById('fieldNamaBarang').value.trim();
+                newItem.kategori = document.getElementById('fieldKategori').value;
+                newItem.kelas = document.getElementById('fieldKelas').value.trim();
+                newItem.bahan = document.getElementById('fieldBahan').value.trim();
+                newItem.spesifikasi = document.getElementById('fieldSpesifikasi').value.trim();
+                newItem.sumber = document.getElementById('fieldSumber').value;
+                newItem.tahunBeli = document.getElementById('fieldTahunBeli').value.trim();
+                newItem.noDokumen = document.getElementById('fieldNoDokumen').value.trim();
+                newItem.harga = parseFloat(document.getElementById('fieldHarga').value) || 0;
+                newItem.lokasi = document.getElementById('fieldLokasi').value.trim();
+                newItem.pic = document.getElementById('fieldPic').value.trim();
+                newItem.kondisi = document.getElementById('fieldKondisi').value;
+                newItem.jumlah = parseInt(document.getElementById('fieldJumlah').value) || 1;
+                newItem.keterangan = document.getElementById('fieldKeterangan').value.trim();
+                newItem.spjFile = document.getElementById('fieldSpjBase64').value;
+            } else if (category === 'pinjaman') {
+                newItem.peminjam = document.getElementById('fieldPeminjam').value.trim();
+                newItem.statusPeminjam = document.getElementById('fieldStatusPeminjam').value;
+                newItem.kelas = document.getElementById('fieldKelas').value.trim();
+                newItem.tglKembali = document.getElementById('fieldTglKembali').value;
+                newItem.status = document.getElementById('fieldStatus').value;
+                newItem.jumlah = parseInt(document.getElementById('fieldJumlah').value) || 1;
+                
+                const checkedMap = {};
+                const checkedBuku = [];
+                document.querySelectorAll('input[name="bukuDipinjamCheck"]:checked').forEach(cb => {
+                    const title = cb.value;
+                    const qtyInput = document.querySelector(`input[name="bukuQty_${CSS.escape(title)}"]`);
+                    const q = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+                    checkedMap[title] = q;
+                    checkedBuku.push(`${title} (${q} eksemplar)`);
+                });
+                newItem.bukuDipinjamMap = checkedMap;
+                newItem.bukuDipinjam = checkedBuku;
+            } else if (category === 'bast') {
+                newItem.pengelolaTipe = document.getElementById('fieldPengelolaTipe').value;
+                newItem.pustakawan = document.getElementById('fieldPustakawan').value.trim();
+                newItem.guru = document.getElementById('fieldGuru').value.trim();
+                newItem.kelas = document.getElementById('fieldKelas').value.trim();
+                newItem.jumlahTotal = parseInt(document.getElementById('fieldJumlahTotal').value) || 1;
+                newItem.bastFile = document.getElementById('fieldBastBase64').value;
+
+                const checkedMap = {};
+                const checkedItems = [];
+                document.querySelectorAll('input[name="bastBarangCheck"]:checked').forEach(cb => {
+                    const label = cb.value;
+                    const qtyInput = document.querySelector(`input[name="bastQty_${CSS.escape(label)}"]`);
+                    const q = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+                    checkedMap[label] = q;
+                    checkedItems.push(`${label} [${q} unit]`);
+                });
+                newItem.rincianBarangMap = checkedMap;
+                newItem.rincianBarang = checkedItems;
+            } else if (category === 'pemeliharaan') {
+                newItem.namaAset = document.getElementById('fieldNamaAset').value;
+                newItem.noInventaris = document.getElementById('fieldNoInventaris').value;
+                newItem.tahunBeli = document.getElementById('fieldTahunBeliAset').value;
+                newItem.jumlahBaik = parseInt(document.getElementById('fieldJumlahBaik').value) || 0;
+                newItem.jumlahRusakRingan = parseInt(document.getElementById('fieldJumlahRusakRingan').value) || 0;
+                newItem.jumlahRusakBerat = parseInt(document.getElementById('fieldJumlahRusakBerat').value) || 0;
+                newItem.keterangan = document.getElementById('fieldKeteranganMnt').value.trim();
+                newItem.buktiFile = document.getElementById('fieldBuktiBase64').value;
+            }
+
+            if (editIndex >= 0) appData[category][editIndex] = newItem;
+            else appData[category].push(newItem);
+
+            saveLocalStorageData();
+            autoSyncToCloudBackground();
+            closeFormModal();
+            renderApp();
+            showToast("Data tersimpan!", "success");
+        }
+
+        function deleteData(index) {
+            if (currentUserRole !== 'admin') return;
+            if (confirm("Hapus data ini?")) {
+                appData[currentTab].splice(index, 1);
+                saveLocalStorageData();
+                autoSyncToCloudBackground();
+                renderApp();
+                showToast("Data dihapus.", "info");
+            }
+        }
+
+        function getLowestAndCurrentYears() {
+            let yearsSet = new Set();
+            const currentY = new Date().getFullYear();
+            yearsSet.add(currentY);
+
+            Object.values(appData).forEach(arr => {
+                if (Array.isArray(arr)) {
+                    arr.forEach(item => {
+                        let yr = item.tahunBeli || (item.tanggal ? item.tanggal.split('-')[0] : null);
+                        if (yr && !isNaN(yr)) yearsSet.add(parseInt(yr));
+                    });
+                }
+            });
+
+            let sortedYears = Array.from(yearsSet).sort((a, b) => a - b);
+            return sortedYears;
+        }
+
+        function openPrintModal() {
+            const container = document.getElementById('print-dynamic-options');
+            container.innerHTML = '';
+
+            const years = getLowestAndCurrentYears();
+            let yearOptionsHTML = `<option value="semua">Semua Tahun Keseluruhan</option>`;
+            years.forEach(y => {
+                yearOptionsHTML += `<option value="${y}">${y}</option>`;
+            });
+
+            if (currentTab === 'pelajaran') {
+                container.innerHTML = `
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Kategori Buku Pelajaran:</label>
+                        <select id="printKategoriFilter" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            <option value="semua">Semua Kategori (Siswa & Guru)</option>
+                            <option value="Buku Siswa">Buku Siswa</option>
+                            <option value="Buku Guru">Buku Guru</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Filter Tahun Pembelian:</label>
+                        <select id="printTahunFilter" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            ${yearOptionsHTML}
+                        </select>
+                    </div>`;
+            } else if (currentTab === 'pinjaman') {
+                container.innerHTML = `
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Filter Status Pinjaman:</label>
+                        <select id="printStatusFilter" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            <option value="semua">Semua Status</option>
+                            <option value="dipinjam">Sedang Dipinjam</option>
+                            <option value="dikembalikan">Dikembalikan</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Filter Tahun:</label>
+                        <select id="printTahunFilter" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            ${yearOptionsHTML}
+                        </select>
+                    </div>`;
+            } else if (currentTab === 'pemeliharaan') {
+                container.innerHTML = `
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Filter Bulan:</label>
+                        <select id="printBulanFilter" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            <option value="semua">Semua Bulan</option>
+                            <option value="01">Januari</option>
+                            <option value="02">Februari</option>
+                            <option value="03">Maret</option>
+                            <option value="04">April</option>
+                            <option value="05">Mei</option>
+                            <option value="06">Juni</option>
+                            <option value="07">Juli</option>
+                            <option value="08">Agustus</option>
+                            <option value="09">September</option>
+                            <option value="10">Oktober</option>
+                            <option value="11">November</option>
+                            <option value="12">Desember</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Filter Tahun:</label>
+                        <select id="printTahunFilter" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            ${yearOptionsHTML}
+                        </select>
+                    </div>`;
+            } else {
+                container.innerHTML = `
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Filter Tahun:</label>
+                        <select id="printTahunFilter" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            ${yearOptionsHTML}
+                        </select>
+                    </div>`;
+            }
+
+            document.getElementById('printModal').classList.remove('hidden');
+        }
+
+        function closePrintModal() { document.getElementById('printModal').classList.add('hidden'); }
+
+        function executePrintReport() {
+            closePrintModal();
+            const printArea = document.getElementById('print-area');
+            let dataList = appData[currentTab] || [];
+
+            const tahunEl = document.getElementById('printTahunFilter');
+            const katEl = document.getElementById('printKategoriFilter');
+            const statusEl = document.getElementById('printStatusFilter');
+            const bulanEl = document.getElementById('printBulanFilter');
+
+            if (tahunEl && tahunEl.value !== 'semua') {
+                dataList = dataList.filter(item => String(item.tahunBeli || item.tanggal || '').includes(tahunEl.value));
+            }
+            if (katEl && katEl.value !== 'semua') {
+                dataList = dataList.filter(item => item.jenisBuku === katEl.value);
+            }
+            if (statusEl && statusEl.value !== 'semua') {
+                dataList = dataList.filter(item => item.status === statusEl.value);
+            }
+            if (bulanEl && bulanEl.value !== 'semua') {
+                dataList = dataList.filter(item => {
+                    if (!item.tanggal) return false;
+                    const m = item.tanggal.split('-')[1];
+                    return m === bulanEl.value;
+                });
+            }
+
+            let categoryTitle = `LAPORAN INVENTARIS (${currentTab.toUpperCase()})`;
+            let tableHeaderHTML = "";
+            let tableRowsHTML = "";
+            let totalQtySum = 0;
+            let totalPriceSum = 0;
+
+            if (currentTab === 'pelajaran' || currentTab === 'perpus') {
+                categoryTitle = currentTab === 'pelajaran' ? `LAPORAN INVENTARIS BUKU PELAJARAN` : `LAPORAN INVENTARIS BUKU PERPUSTAKAAN`;
+                tableHeaderHTML = `
+                    <tr style="background-color: #f1f5f9;">
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">No</th>
+                        <th style="border:1px solid #000; padding:5px;">No. Inventaris</th>
+                        <th style="border:1px solid #000; padding:5px;">Judul Buku</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">Kelas</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">Jumlah</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:right;">Harga Satuan (Rp)</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:right;">Total (Rp)</th>
+                    </tr>`;
+
+                dataList.forEach((item, idx) => {
+                    const qty = parseInt(item.jumlah) || 0;
+                    const price = parseFloat(item.harga) || 0;
+                    const subtotal = qty * price;
+                    totalQtySum += qty;
+                    totalPriceSum += subtotal;
+
+                    tableRowsHTML += `
+                        <tr>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${idx + 1}</td>
+                            <td style="border:1px solid #000; padding:5px;">${item.no}</td>
+                            <td style="border:1px solid #000; padding:5px;"><b>${escapeHtml(item.judul)}</b><br><small>${escapeHtml(item.pengarang || '-')}</small></td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${escapeHtml(item.kelas || '-')}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${qty}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:right;">${formatRupiah(price)}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:right;">${formatRupiah(subtotal)}</td>
+                        </tr>`;
+                });
+            } else if (currentTab === 'barangModal') {
+                categoryTitle = `LAPORAN INVENTARIS BARANG MODAL`;
+                tableHeaderHTML = `
+                    <tr style="background-color: #f1f5f9;">
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">No</th>
+                        <th style="border:1px solid #000; padding:5px;">Kode Aset</th>
+                        <th style="border:1px solid #000; padding:5px;">Nama Barang</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">Kelas / Ruang</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">Jumlah</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:right;">Harga Satuan (Rp)</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:right;">Total (Rp)</th>
+                    </tr>`;
+
+                dataList.forEach((item, idx) => {
+                    const qty = parseInt(item.jumlah) || 0;
+                    const price = parseFloat(item.harga) || 0;
+                    const subtotal = qty * price;
+                    totalQtySum += qty;
+                    totalPriceSum += subtotal;
+
+                    tableRowsHTML += `
+                        <tr>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${idx + 1}</td>
+                            <td style="border:1px solid #000; padding:5px;">${item.no}</td>
+                            <td style="border:1px solid #000; padding:5px;"><b>${escapeHtml(item.namaBarang)}</b></td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${escapeHtml(item.kelas || '-')}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${qty}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:right;">${formatRupiah(price)}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:right;">${formatRupiah(subtotal)}</td>
+                        </tr>`;
+                });
+            } else if (currentTab === 'pinjaman') {
+                categoryTitle = `LAPORAN PEMINJAMAN BUKU`;
+                tableHeaderHTML = `
+                    <tr style="background-color: #f1f5f9;">
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">No</th>
+                        <th style="border:1px solid #000; padding:5px;">No. Pinjam</th>
+                        <th style="border:1px solid #000; padding:5px;">Peminjam</th>
+                        <th style="border:1px solid #000; padding:5px;">Buku Dipinjam</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">Jumlah</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">Status</th>
+                    </tr>`;
+
+                dataList.forEach((item, idx) => {
+                    const bukuStr = Array.isArray(item.bukuDipinjam) ? item.bukuDipinjam.join(', ') : (item.bukuDipinjam || '-');
+                    const qty = parseInt(item.jumlah) || 1;
+                    totalQtySum += qty;
+
+                    tableRowsHTML += `
+                        <tr>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${idx + 1}</td>
+                            <td style="border:1px solid #000; padding:5px;">${item.no}</td>
+                            <td style="border:1px solid #000; padding:5px;"><b>${escapeHtml(item.peminjam)}</b><br><small>${escapeHtml(item.kelas)}</small></td>
+                            <td style="border:1px solid #000; padding:5px;">${escapeHtml(bukuStr)}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${qty}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${item.status || 'dipinjam'}</td>
+                        </tr>`;
+                });
+            } else if (currentTab === 'bast') {
+                categoryTitle = `LAPORAN DOKUMEN BAST SERAH TERIMA`;
+                tableHeaderHTML = `
+                    <tr style="background-color: #f1f5f9;">
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">No</th>
+                        <th style="border:1px solid #000; padding:5px;">No. BAST</th>
+                        <th style="border:1px solid #000; padding:5px;">Penerima</th>
+                        <th style="border:1px solid #000; padding:5px;">Rincian Barang/Buku</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">Total Items</th>
+                    </tr>`;
+
+                dataList.forEach((item, idx) => {
+                    const barangStr = Array.isArray(item.rincianBarang) ? item.rincianBarang.join(', ') : (item.rincianBarang || '-');
+                    const qty = parseInt(item.jumlahTotal) || 1;
+                    totalQtySum += qty;
+
+                    tableRowsHTML += `
+                        <tr>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${idx + 1}</td>
+                            <td style="border:1px solid #000; padding:5px;">${item.no}</td>
+                            <td style="border:1px solid #000; padding:5px;"><b>${escapeHtml(item.guru)}</b><br><small>${escapeHtml(item.kelas)}</small></td>
+                            <td style="border:1px solid #000; padding:5px;">${escapeHtml(barangStr)}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${qty}</td>
+                        </tr>`;
+                });
+            } else if (currentTab === 'pemeliharaan') {
+                categoryTitle = `LAPORAN PEMELIHARAAN & KERUSAKAN BARANG / BUKU`;
+                tableHeaderHTML = `
+                    <tr style="background-color: #f1f5f9;">
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">No</th>
+                        <th style="border:1px solid #000; padding:5px;">Kode</th>
+                        <th style="border:1px solid #000; padding:5px;">Nama Aset / Buku</th>
+                        <th style="border:1px solid #000; padding:5px;">No. Inventaris</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">Baik</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">R. Ringan</th>
+                        <th style="border:1px solid #000; padding:5px; text-align:center;">R. Berat</th>
+                        <th style="border:1px solid #000; padding:5px;">Keterangan</th>
+                    </tr>`;
+
+                dataList.forEach((item, idx) => {
+                    tableRowsHTML += `
+                        <tr>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${idx + 1}</td>
+                            <td style="border:1px solid #000; padding:5px;">${item.no}</td>
+                            <td style="border:1px solid #000; padding:5px;"><b>${escapeHtml(item.namaAset)}</b></td>
+                            <td style="border:1px solid #000; padding:5px;">${escapeHtml(item.noInventaris || '-')}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${item.jumlahBaik || 0}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${item.jumlahRusakRingan || 0}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${item.jumlahRusakBerat || 0}</td>
+                            <td style="border:1px solid #000; padding:5px;">${escapeHtml(item.keterangan || '-')}</td>
+                        </tr>`;
+                });
+            }
+
+            const isBarangOrPemeliharaan = (currentTab === 'barangModal' || currentTab === 'pemeliharaan');
+            const pengelolaNama = isBarangOrPemeliharaan ? appSettings.pengelolaBarangNama : appSettings.pustakawanNama;
+            const pengelolaNip = isBarangOrPemeliharaan ? appSettings.pengelolaBarangNip : appSettings.pustakawanNip;
+            const pengelolaJabatan = isBarangOrPemeliharaan ? "Pengelola Barang Modal / Sarpras" : "Pengelola Perpustakaan";
+
+            const kopHeaderHTML = appSettings.kopBase64 
+                ? `<div style="text-align: center; margin-bottom: 15px;"><img src="${appSettings.kopBase64}" style="max-height: 85px; width: auto; display: inline-block;"></div>`
+                : `<div style="text-align: center; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 15px;">
+                    <h3 style="margin: 0; font-size: 12pt; text-transform: uppercase;">PEMERINTAH KOTA SERANG</h3>
+                    <h2 style="margin: 2px 0; font-size: 14pt; text-transform: uppercase;">DINAS PENDIDIKAN DAN KEBUDAYAAN</h2>
+                    <h1 style="margin: 2px 0; font-size: 16pt; text-transform: uppercase;">SD NEGERI UMBUL KAPUK</h1>
+                    <p style="margin: 0; font-size: 9pt;">Alamat: Jl. Takari Umbul Kapuk, Kec. Taktakan, Kota Serang, Banten 42162</p>
+                   </div>`;
+
+            let footerSummaryHTML = "";
+            if (currentTab === 'pelajaran' || currentTab === 'perpus' || currentTab === 'barangModal') {
+                footerSummaryHTML = `
+                    <tfoot>
+                        <tr style="font-weight: bold; background-color: #f8fafc;">
+                            <td colspan="4" style="border: 1px solid #000; padding: 6px; text-align: right;">TOTAL KESELURUHAN:</td>
+                            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${totalQtySum}</td>
+                            <td style="border: 1px solid #000; padding: 6px; text-align: right;">-</td>
+                            <td style="border: 1px solid #000; padding: 6px; text-align: right;">${formatRupiah(totalPriceSum)}</td>
+                        </tr>
+                    </tfoot>`;
+            }
+
+            const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            printArea.innerHTML = `
+                <div style="font-family: Arial, sans-serif; font-size: 10pt; color: #000;">
+                    ${kopHeaderHTML}
+                    <h4 style="text-align: center; margin-bottom: 15px; font-size: 12pt; text-decoration: underline;">${categoryTitle}</h4>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 20px;">
+                        <thead>${tableHeaderHTML}</thead>
+                        <tbody>${tableRowsHTML}</tbody>
+                        ${footerSummaryHTML}
+                    </table>
+                    <div style="margin-top: 30px; display: flex; justify-content: space-between; font-size: 10pt;">
+                        <div style="text-align: center; width: 40%;">
+                            <p style="margin-bottom: 60px;">Mengetahui,<br><b>Kepala Sekolah SDN Umbul Kapuk</b></p>
+                            <p style="margin: 0; font-weight: bold; text-decoration: underline;">( ${escapeHtml(appSettings.kepsekNama)} )</p>
+                            <p style="margin: 0;">NIP. ${escapeHtml(appSettings.kepsekNip)}</p>
+                        </div>
+                        <div style="text-align: center; width: 40%;">
+                            <p style="margin-bottom: 60px;">Serang, ${today}<br><b>${pengelolaJabatan}</b></p>
+                            <p style="margin: 0; font-weight: bold; text-decoration: underline;">( ${escapeHtml(pengelolaNama)} )</p>
+                            <p style="margin: 0;">NIP. ${escapeHtml(pengelolaNip)}</p>
+                        </div>
+                    </div>
+                </div>`;
+
+            printArea.classList.remove('hidden');
+            window.print();
+            printArea.classList.add('hidden');
+        }
+
+        function printKartuPinjaman(index) {
+            const item = appData.pinjaman[index];
+            if (!item) return;
+            const printArea = document.getElementById('print-area');
+            const bukuStr = Array.isArray(item.bukuDipinjam) ? item.bukuDipinjam.join('<br>') : (item.bukuDipinjam || '-');
+            
+            const kopHeaderHTML = appSettings.kopBase64 
+                ? `<div style="text-align: center; margin-bottom: 10px;"><img src="${appSettings.kopBase64}" style="max-height: 65px; width: auto; display: inline-block;"></div>`
+                : `<div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 10px;">
+                    <h3 style="margin: 0; font-size: 10pt; text-transform: uppercase;">SD NEGERI UMBUL KAPUK</h3>
+                    <p style="margin: 0; font-size: 8pt;">KARTU BUKTI PEMINJAMAN BUKU</p>
+                   </div>`;
+
+            printArea.innerHTML = `
+                <div style="font-family: Arial, sans-serif; font-size: 10pt; color: #000; width: 380px; border: 2px dashed #000; padding: 15px; margin: auto;">
+                    ${kopHeaderHTML}
+                    <h4 style="text-align: center; margin: 5px 0 15px 0; font-size: 11pt; text-decoration: underline;">KARTU PEMINJAMAN</h4>
+                    <table style="width: 100%; font-size: 9.5pt; line-height: 1.5;">
+                        <tr><td style="width: 35%;">No. Pinjam</td><td>: <b>${item.no}</b></td></tr>
+                        <tr><td>Tanggal</td><td>: ${item.tanggal}</td></tr>
+                        <tr><td>Peminjam</td><td>: ${escapeHtml(item.peminjam)} (${escapeHtml(item.statusPeminjam)})</td></tr>
+                        <tr><td>Kelas / Jabatan</td><td>: ${escapeHtml(item.kelas)}</td></tr>
+                        <tr><td>Buku Dipinjam</td><td>: <div style="margin-left: 0px; font-weight: bold;">${bukuStr}</div></td></tr>
+                        <tr><td>Jumlah Total</td><td>: ${item.jumlah} Eksemplar</td></tr>
+                        <tr><td>Rencana Kembali</td><td>: <b>${item.tglKembali}</b></td></tr>
+                        <tr><td>Status</td><td>: <span style="text-transform: uppercase; font-weight: bold;">${item.status || 'dipinjam'}</span></td></tr>
+                    </table>
+                    <div style="margin-top: 20px; text-align: right; font-size: 9pt;">
+                        <p style="margin-bottom: 40px;">Petugas / Pustakawan</p>
+                        <p style="margin: 0; font-weight: bold;">(${escapeHtml(appSettings.pustakawanNama)})</p>
+                    </div>
+                </div>`;
+
+            printArea.classList.remove('hidden');
+            window.print();
+            printArea.classList.add('hidden');
+        }
+
+        function printDokumenBAST(index) {
+            const item = appData.bast[index];
+            if (!item) return;
+            const printArea = document.getElementById('print-area');
+
+            let tableRows = "";
+            let rincianMap = item.rincianBarangMap || {};
+            if (Object.keys(rincianMap).length === 0 && Array.isArray(item.rincianBarang)) {
+                item.rincianBarang.forEach((b, idx) => {
+                    tableRows += `<tr>
+                        <td style="border:1px solid #000; padding:5px; text-align:center;">${idx + 1}</td>
+                        <td style="border:1px solid #000; padding:5px;">${escapeHtml(b)}</td>
+                        <td style="border:1px solid #000; padding:5px; text-align:center;">-</td>
+                    </tr>`;
+                });
+            } else {
+                let idx = 1;
+                for (let [namaBarang, qty] of Object.entries(rincianMap)) {
+                    tableRows += `<tr>
+                        <td style="border:1px solid #000; padding:5px; text-align:center;">${idx++}</td>
+                        <td style="border:1px solid #000; padding:5px;">${escapeHtml(namaBarang)}</td>
+                        <td style="border:1px solid #000; padding:5px; text-align:center;">${qty}</td>
+                    </tr>`;
+                }
+            }
+
+            const kopHeaderHTML = appSettings.kopBase64 
+                ? `<div style="text-align: center; margin-bottom: 15px;"><img src="${appSettings.kopBase64}" style="max-height: 85px; width: auto; display: inline-block;"></div>`
+                : `<div style="text-align: center; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 15px;">
+                    <h3 style="margin: 0; font-size: 12pt; text-transform: uppercase;">PEMERINTAH KOTA SERANG</h3>
+                    <h2 style="margin: 2px 0; font-size: 14pt; text-transform: uppercase;">DINAS PENDIDIKAN DAN KEBUDAYAAN</h2>
+                    <h1 style="margin: 2px 0; font-size: 16pt; text-transform: uppercase;">SD NEGERI UMBUL KAPUK</h1>
+                    <p style="margin: 0; font-size: 9pt;">Alamat: Jl. Takari Umbul Kapuk, Kec. Taktakan, Kota Serang, Banten 42162</p>
+                   </div>`;
+
+            const pengelolaNama = item.pengelolaTipe === 'pengelolaBarang' ? appSettings.pengelolaBarangNama : appSettings.pustakawanNama;
+            const pengelolaNip = item.pengelolaTipe === 'pengelolaBarang' ? appSettings.pengelolaBarangNip : appSettings.pustakawanNip;
+            const pengelolaJabatan = item.pengelolaTipe === 'pengelolaBarang' ? "Pengelola Barang Modal / Sarpras" : "Pengelola Perpustakaan";
+
+            const rawDate = item.tanggal ? item.tanggal.split('T')[0] : new Date().toISOString().split('T')[0];
+            const dateParts = rawDate.split('-');
+            const monthNames = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const formattedDate = dateParts.length === 3 ? `${parseInt(dateParts[2], 10)} ${monthNames[parseInt(dateParts[1], 10)]} ${dateParts[0]}` : rawDate;
+
+            printArea.innerHTML = `
+                <div style="font-family: Arial, sans-serif; font-size: 10.5pt; color: #000; line-height: 1.6;">
+                    ${kopHeaderHTML}
+                    <h3 style="text-align: center; margin-bottom: 5px; font-size: 13pt; text-decoration: underline;">BERITA ACARA SERAH TERIMA (BAST)</h3>
+                    <p style="text-align: center; margin-top: 0; font-size: 10pt;">Nomor: ${item.no}</p>
+                    <p style="margin-top: 20px; text-align: justify;">Pada hari ini tanggal <b>${formattedDate}</b>, yang bertanda tangan di bawah ini:</p>
+                    <table style="width: 100%; margin-left: 20px; margin-bottom: 15px;">
+                        <tr><td style="width: 25%;">1. Nama</td><td>: <b>${escapeHtml(item.pustakawan || pengelolaNama)}</b></td></tr>
+                        <tr><td>Jabatan</td><td>: ${pengelolaJabatan}</td></tr>
+                        <tr><td style="padding-top: 10px;">2. Nama</td><td style="padding-top: 10px;">: <b>${escapeHtml(item.guru)}</b></td></tr>
+                        <tr><td>Jabatan / Kelas</td><td>: Penerima / ${escapeHtml(item.kelas)}</td></tr>
+                    </table>
+                    <p style="text-align: justify;">Pihak Pertama telah menyerahkan barang/buku inventaris sekolah kepada Pihak Kedua, dan Pihak Kedua telah menerima dengan kondisi baik dengan rincian dalam tabel berikut:</p>
+                    
+                    <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 20px;">
+                        <thead>
+                            <tr style="background-color: #f1f5f9;">
+                                <th style="border:1px solid #000; padding:6px; text-align:center; width: 8%;">No</th>
+                                <th style="border:1px solid #000; padding:6px; text-align:left;">Nama Barang / Buku (Inventaris)</th>
+                                <th style="border:1px solid #000; padding:6px; text-align:center; width: 22%;">Jumlah</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight: bold; background-color: #f8fafc;">
+                                <td colspan="2" style="border: 1px solid #000; padding: 6px; text-align: right;">JUMLAH TOTAL KESELURUHAN:</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">${item.jumlahTotal} Unit / Eksemplar</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <p style="text-align: justify;">Demikian Berita Acara Serah Terima ini dibuat dengan sebenarnya untuk dipergunakan sebagaimana mestinya.</p>
+                    <div style="margin-top: 40px; display: flex; justify-content: space-between; font-size: 10pt;">
+                        <div style="text-align: center; width: 40%;">
+                            <p style="margin-bottom: 60px;">Pihak Kedua (Penerima),<br><b>${escapeHtml(item.guru)}</b></p>
+                            <p style="margin: 0; font-weight: bold; text-decoration: underline;">( ${escapeHtml(item.guru)} )</p>
+                        </div>
+                        <div style="text-align: center; width: 40%;">
+                            <p style="margin-bottom: 60px;">Pihak Pertama (${pengelolaJabatan}),<br><b>${escapeHtml(item.pustakawan || pengelolaNama)}</b></p>
+                            <p style="margin: 0; font-weight: bold; text-decoration: underline;">( ${escapeHtml(item.pustakawan || pengelolaNama)} )</p>
+                            <p style="margin: 0;">NIP. ${escapeHtml(pengelolaNip)}</p>
+                        </div>
+                    </div>
+                </div>`;
+
+            printArea.classList.remove('hidden');
+            window.print();
+            printArea.classList.add('hidden');
+        }
+
+        function exportCurrentExcel() {
+            const dataList = appData[currentTab] || [];
+            if (dataList.length === 0) return;
+            let wsData = [];
+
+            if (currentTab === 'pelajaran') {
+                wsData.push(["No Inventaris", "Tanggal", "Judul Buku", "Jenis Buku", "Kelas", "Mata Pelajaran", "Pengarang", "Penerbit", "Tahun Beli", "ISBN", "Sumber Dana", "Harga Satuan", "Jumlah", "Rak"]);
+                dataList.forEach(i => wsData.push([i.no, i.tanggal, i.judul, i.jenisBuku, i.kelas, i.mapel, i.pengarang, i.penerbit, i.tahunBeli, i.isbn, i.sumber, i.harga, i.jumlah, i.rak]));
+            } else if (currentTab === 'perpus') {
+                wsData.push(["No Inventaris", "Tanggal", "Judul Buku", "DDC", "Kelas", "Pengarang", "Penerbit", "Tahun Beli", "Sumber Dana", "Harga Satuan", "Jumlah", "Rak"]);
+                dataList.forEach(i => wsData.push([i.no, i.tanggal, i.judul, i.klasifikasi, i.kelas, i.pengarang, i.penerbit, i.tahunBeli, i.sumber, i.harga, i.jumlah, i.rak]));
+            } else if (currentTab === 'barangModal') {
+                wsData.push(["Kode Aset", "Tanggal", "Nama Barang", "Kategori", "Kelas / Ruang", "Spesifikasi", "Bahan", "Sumber Dana", "Tahun Beli", "No Dokumen", "Harga Satuan", "Lokasi", "PIC", "Kondisi", "Jumlah", "Keterangan"]);
+                dataList.forEach(i => wsData.push([i.no, i.tanggal, i.namaBarang, i.kategori, i.kelas, i.spesifikasi, i.bahan, i.sumber, i.tahunBeli, i.noDokumen, i.harga, i.lokasi, i.pic, i.kondisi, i.jumlah, i.keterangan]));
+            } else if (currentTab === 'pinjaman') {
+                wsData.push(["No Pinjam", "Tanggal", "Peminjam", "Status Peminjam", "Kelas", "Buku Dipinjam", "Jumlah", "Tgl Kembali", "Status"]);
+                dataList.forEach(i => wsData.push([i.no, i.tanggal, i.peminjam, i.statusPeminjam, i.kelas, Array.isArray(i.bukuDipinjam) ? i.bukuDipinjam.join(', ') : i.bukuDipinjam, i.jumlah, i.tglKembali, i.status]));
+            } else if (currentTab === 'bast') {
+                wsData.push(["No BAST", "Tanggal", "Pengelola Tipe", "Nama Pengelola", "Penerima", "Kelas", "Rincian Barang", "Jumlah Total"]);
+                dataList.forEach(i => wsData.push([i.no, i.tanggal, i.pengelolaTipe, i.pustakawan, i.guru, i.kelas, Array.isArray(i.rincianBarang) ? i.rincianBarang.join(', ') : i.rincianBarang, i.jumlahTotal]));
+            } else if (currentTab === 'pemeliharaan') {
+                wsData.push(["Kode", "Tanggal", "Nama Aset / Buku", "No Inventaris", "Tahun Beli", "Baik", "Rusak Ringan", "Rusak Berat", "Keterangan"]);
+                dataList.forEach(i => wsData.push([i.no, i.tanggal, i.namaAset, i.noInventaris, i.tahunBeli, i.jumlahBaik, i.jumlahRusakRingan, i.jumlahRusakBerat, i.keterangan]));
+            }
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, currentTab.toUpperCase());
+            XLSX.writeFile(wb, `SIPAS_${currentTab.toUpperCase()}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        async function autoSyncToCloudBackground() {
+            if (!appSettings.gasUrl) return;
+            try {
+                const payload = {
+                    pelajaran: appData.pelajaran,
+                    perpus: appData.perpus,
+                    pinjaman: appData.pinjaman,
+                    bast: appData.bast,
+                    barangModal: appData.barangModal,
+                    pemeliharaan: appData.pemeliharaan,
+                    settings: [appSettings]
+                };
+
+                await fetch(appSettings.gasUrl, {
+                    method: "POST", mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+            } catch (err) {}
+        }
+
+        function exportBackupJSON() {
+            const exportPayload = { data: appData, settings: appSettings };
+            const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `BACKUP_SIPAS_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+        }
+
+        function importBackupJSON(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const parsed = JSON.parse(evt.target.result);
+                    if (parsed.data) {
+                        appData = parsed.data;
+                        saveLocalStorageData();
+                    }
+                    if (parsed.settings) {
+                        appSettings = { ...defaultSettings, ...parsed.settings };
+                        saveLocalStorageSettings();
+                        applyRolePermissions();
+                    }
+                    renderApp();
+                    autoSyncToCloudBackground();
+                    showToast("Data backup berhasil dipulihkan!", "success");
+                } catch(err) {
+                    showToast("Format file JSON tidak valid!", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function formatRupiah(amount) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(parseFloat(amount) || 0);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
